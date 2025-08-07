@@ -47,13 +47,13 @@ class DynamicOrchestratorServer:
             config_loader = ConfigLoader()
             self.config = config_loader.load_all()
             
-            # Initialize orchestrator with MCP session for Claude Code access
-            self.orchestrator = Orchestrator(self.config, mcp_session=self.mcp_session)
-            await self.orchestrator.initialize()
-            
-            # Initialize metrics collector
+            # Initialize metrics collector first
             self.metrics = MetricsCollector(self.config.get("monitoring", {}))
             await self.metrics.initialize()
+            
+            # Initialize orchestrator with MCP session for Claude Code access and metrics
+            self.orchestrator = Orchestrator(self.config, mcp_session=self.mcp_session, metrics=self.metrics)
+            await self.orchestrator.initialize()
             
             logger.info("Dynamic Orchestrator MCP Server initialized successfully")
             

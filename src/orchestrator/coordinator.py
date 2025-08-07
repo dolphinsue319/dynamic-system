@@ -35,7 +35,7 @@ class OrchestrationResult:
 class Orchestrator:
     """Main orchestrator for dynamic system"""
     
-    def __init__(self, config: Dict[str, Any], mcp_session=None):
+    def __init__(self, config: Dict[str, Any], mcp_session=None, metrics=None):
         self.config = config
         self.mcp_session = mcp_session
         
@@ -51,7 +51,8 @@ class Orchestrator:
         self.model_selector = ModelSelector(config.get("models", {}), claude_code_client=claude_code_client)
         
         self.fallback_handler = FallbackHandler(config.get("models", {}))
-        self.metrics = MetricsCollector(config.get("monitoring", {}))
+        # Use provided metrics or create new one
+        self.metrics = metrics if metrics else MetricsCollector(config.get("monitoring", {}))
         
         self.initialized = False
     

@@ -45,13 +45,13 @@ async def initialize_server():
         config_loader = ConfigLoader()
         config = config_loader.load_all()
         
-        # Initialize orchestrator
-        orchestrator = Orchestrator(config)
-        await orchestrator.initialize()
-        
-        # Initialize metrics collector
+        # Initialize metrics collector first
         metrics = MetricsCollector(config.get("monitoring", {}))
         await metrics.initialize()
+        
+        # Initialize orchestrator with the metrics instance
+        orchestrator = Orchestrator(config, metrics=metrics)
+        await orchestrator.initialize()
         
         logger.info("Dynamic Orchestrator MCP Server initialized successfully")
         
