@@ -10,11 +10,19 @@ from mcp.server import Server
 from mcp.types import Tool, TextContent
 import mcp
 
-from src.orchestrator.coordinator import Orchestrator
-from src.utils.config_loader import ConfigLoader
-from src.utils.logger import setup_logger
-from src.monitoring.metrics_collector import MetricsCollector
-from src.models.requests import OrchestrateRequest, AnalyzeRequest, MetricsRequest
+# Try relative imports first (for local execution), fall back to absolute (for container)
+try:
+    from orchestrator.coordinator import Orchestrator
+    from utils.config_loader import ConfigLoader
+    from utils.logger import setup_logger
+    from monitoring.metrics_collector import MetricsCollector
+    from models.requests import OrchestrateRequest, AnalyzeRequest, MetricsRequest
+except ImportError:
+    from src.orchestrator.coordinator import Orchestrator
+    from src.utils.config_loader import ConfigLoader
+    from src.utils.logger import setup_logger
+    from src.monitoring.metrics_collector import MetricsCollector
+    from src.models.requests import OrchestrateRequest, AnalyzeRequest, MetricsRequest
 
 # Setup logging
 logger = setup_logger(__name__)
@@ -30,9 +38,7 @@ class DynamicOrchestratorServer:
         self.config: Optional[Dict] = None
         self.mcp_session = mcp_session  # Store MCP session for Claude Code access
         
-        # Register handlers
-        self.server.list_tools(self.handle_list_tools)
-        self.server.call_tool(self.handle_call_tool)
+        # Handlers will be registered with decorators
         
     async def initialize(self):
         """Initialize the server components"""
@@ -157,7 +163,7 @@ class DynamicOrchestratorServer:
         # Validate input
         try:
             validated = OrchestrateRequest(**arguments)
-            request_data = validated.dict()
+            request_data = validated.model_dump()
         except Exception as e:
             logger.error(f"Input validation failed: {e}")
             return {"error": f"Invalid input: {str(e)}"}

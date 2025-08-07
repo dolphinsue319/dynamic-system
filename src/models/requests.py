@@ -1,7 +1,7 @@
 """Pydantic models for request validation"""
 
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import re
 
 
@@ -23,7 +23,7 @@ class OrchestrateRequest(BaseModel):
         description="User options and preferences"
     )
     
-    @validator('request')
+    @field_validator('request')
     def validate_request(cls, v):
         """Validate and sanitize the request"""
         # Strip whitespace
@@ -54,14 +54,14 @@ class OrchestrateRequest(BaseModel):
         
         return v
     
-    @validator('context')
+    @field_validator('context')
     def validate_context(cls, v):
         """Validate context dictionary"""
         if v and len(str(v)) > 50000:
             raise ValueError('Context too large (max 50KB)')
         return v
     
-    @validator('options')
+    @field_validator('options')
     def validate_options(cls, v):
         """Validate options dictionary"""
         if v:
@@ -101,7 +101,7 @@ class AnalyzeRequest(BaseModel):
         description="The request to analyze"
     )
     
-    @validator('request')
+    @field_validator('request')
     def validate_request(cls, v):
         """Validate the analysis request"""
         v = v.strip()
@@ -117,11 +117,11 @@ class MetricsRequest(BaseModel):
     
     period: str = Field(
         default="5m",
-        regex="^[0-9]+[smhd]$",
+        pattern="^[0-9]+[smhd]$",
         description="Time period for metrics (e.g., 5m, 1h, 1d)"
     )
     
-    @validator('period')
+    @field_validator('period')
     def validate_period(cls, v):
         """Validate the time period"""
         # Extract number and unit
@@ -167,6 +167,6 @@ def validate_request(request_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
     
     try:
         validated = validator_class(**data)
-        return validated.dict()
+        return validated.model_dump()
     except Exception as e:
         raise ValueError(f'Validation failed: {str(e)}')
