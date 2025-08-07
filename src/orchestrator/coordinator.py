@@ -50,7 +50,7 @@ class Orchestrator:
         claude_code_client = ClaudeCodeLLMClient(mcp_session) if mcp_session else None
         self.model_selector = ModelSelector(config.get("models", {}), claude_code_client=claude_code_client)
         
-        self.fallback_handler = FallbackHandler(config.get("models", {}))
+        self.fallback_handler = FallbackHandler(config.get("models", {}), mcp_session=mcp_session)
         # Use provided metrics or create new one
         self.metrics = metrics if metrics else MetricsCollector(config.get("monitoring", {}))
         
@@ -69,6 +69,7 @@ class Orchestrator:
                 self.prompt_generator.initialize(),
                 self.service_selector.initialize(),
                 self.model_selector.initialize(),
+                self.fallback_handler.initialize(),
                 self.metrics.initialize()
             )
             

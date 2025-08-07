@@ -29,9 +29,10 @@ class ExecutionAttempt:
 class FallbackHandler:
     """Handles automatic fallback when primary options fail"""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], mcp_session=None):
         self.config = config
-        self.llm_client = LLMClient(config)
+        self.mcp_session = mcp_session
+        self.llm_client = LLMClient(config, mcp_session=mcp_session)
         self.model_selector = ModelSelector(config)
         self.mcp_connector = MCPConnector()
         self.service_registry = MCPServiceRegistry(config.get("mcp_services", {}))
@@ -46,6 +47,23 @@ class FallbackHandler:
         self.failure_windows: Dict[str, float] = {}
         self.circuit_breaker_threshold = 3
         self.circuit_breaker_timeout = 300  # 5 minutes
+        
+        self.initialized = False
+    
+    async def initialize(self):
+        """Initialize all async components"""
+        if self.initialized:
+            return
+        
+        try:
+            # Initialize LLM client first
+            await self.llm_client.initialize(self.mcp_session)
+            logger.info("FallbackHandler initialized successfully")
+            self.initialized = True
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize FallbackHandler: {e}")
+            raise
     
     async def execute_with_fallback(
         self,
