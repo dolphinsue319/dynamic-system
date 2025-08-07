@@ -1,0 +1,103 @@
+# Dynamic Orchestrator Configuration
+
+# Intent Classification
+classification:
+  model: gemini-2.0-flash
+  temperature: 0.3
+  confidence_threshold: 0.7
+  cache_ttl: 300
+
+# Complexity Analysis
+analysis:
+  model: gemini-2.0-flash
+  temperature: 0.3
+  cache_ttl: 300
+
+# Prompt Generation
+prompt_generation:
+  model: gpt-4o-mini
+  temperature: 0.7
+  max_length: 2000
+  cache_ttl: 600
+
+# Model Selection by Complexity
+execution:
+  simple:
+    preferred: gemini-2.0-flash
+    fallback:
+      - gpt-3.5-turbo
+      - claude-3-haiku-20240307
+  moderate:
+    preferred: gpt-4o-mini
+    fallback:
+      - gemini-2.5-pro
+      - claude-3-sonnet-20240229
+  complex:
+    preferred: gpt-4o
+    fallback:
+      - o3
+      - claude-3-opus-20240229
+
+# MCP Services Registry
+mcp_services:
+  file_manager:
+    type: stdio
+    command: ["node", "/path/to/file-manager.js"]
+    capabilities:
+      - read
+      - write
+      - search
+    timeout: 30000
+    
+  code_analyzer:
+    type: stdio
+    command: ["python", "-m", "code_analyzer"]
+    capabilities:
+      - analyze
+      - metrics
+      - dependencies
+    timeout: 60000
+    
+  api_generator:
+    type: http
+    url: http://localhost:8001
+    capabilities:
+      - generate
+      - scaffold
+    timeout: 45000
+    
+  test_runner:
+    type: http
+    url: http://localhost:8002
+    capabilities:
+      - test
+      - coverage
+    timeout: 120000
+
+# Caching
+cache:
+  redis_url: redis://localhost:6379
+  default_ttl: 300
+  max_entries: 10000
+
+# Metrics Collection
+metrics:
+  prometheus_port: 9090
+  collect_interval: 60
+  retention_days: 7
+
+# Fallback Configuration
+fallback:
+  max_retries: 3
+  retry_delay_ms: 1000
+  backoff_multiplier: 2.0
+  circuit_breaker_threshold: 3
+  circuit_breaker_timeout: 300
+
+# Logging
+logging:
+  level: INFO
+  format: json
+  file: logs/orchestrator.log
+  max_size_mb: 100
+  max_files: 10
