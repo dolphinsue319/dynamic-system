@@ -119,12 +119,40 @@ python -m src.server
 
 1. **Build the container:**
 ```bash
+# Production build (multi-stage, optimized)
 podman build -f Containerfile -t dynamic-orchestrator:latest .
+
+# OR Quick build (single-stage, faster)
+podman build -f Containerfile.simple -t dynamic-orchestrator:latest .
 ```
 
-2. **Run with podman-compose:**
+2. **Run the container:**
 ```bash
+# Run with podman-compose (includes Redis for caching)
 podman-compose up -d
+
+# OR Run standalone (no Redis, uses memory cache)
+podman run -d \
+  --name dynamic-orchestrator \
+  -p 8080:8080 \
+  -e LOG_LEVEL=INFO \
+  dynamic-orchestrator:latest
+```
+
+3. **Check container status:**
+```bash
+podman logs dynamic-orchestrator
+podman ps
+```
+
+4. **Environment variables for container:**
+```bash
+# Optional: Set API keys for external fallback (not needed for Claude Code)
+-e OPENAI_API_KEY=your-key \
+-e GOOGLE_API_KEY=your-key \
+-e ANTHROPIC_API_KEY=your-key \
+-e LOG_LEVEL=DEBUG \
+-e CACHE_TTL=3600
 ```
 
 ## 📖 Usage
