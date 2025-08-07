@@ -1,9 +1,10 @@
 """Unified LLM client for multiple providers"""
 
-import os
 import logging
 from typing import Any, Dict, Optional, List
 from enum import Enum
+
+from .env_loader import EnvLoader
 
 logger = logging.getLogger(__name__)
 
@@ -28,35 +29,44 @@ class LLMClient:
         if self.initialized:
             return
         
+        # Load environment variables securely
+        env_loader = EnvLoader()
+        
         # Check for OpenAI
-        if os.environ.get("OPENAI_API_KEY"):
+        openai_key = env_loader.get_api_key("openai")
+        if openai_key:
             try:
                 import openai
                 self.clients[LLMProvider.OPENAI] = openai.AsyncOpenAI(
-                    api_key=os.environ["OPENAI_API_KEY"]
+                    api_key=openai_key
                 )
-                logger.info("OpenAI client initialized")
+                masked_key = env_loader.mask_api_key(openai_key)
+                logger.info(f"OpenAI client initialized with key: {masked_key}")
             except ImportError:
                 logger.warning("OpenAI library not installed")
         
         # Check for Google
-        if os.environ.get("GOOGLE_API_KEY"):
+        google_key = env_loader.get_api_key("google")
+        if google_key:
             try:
                 import google.generativeai as genai
-                genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+                genai.configure(api_key=google_key)
                 self.clients[LLMProvider.GOOGLE] = genai
-                logger.info("Google Gemini client initialized")
+                masked_key = env_loader.mask_api_key(google_key)
+                logger.info(f"Google Gemini client initialized with key: {masked_key}")
             except ImportError:
                 logger.warning("Google Generative AI library not installed")
         
         # Check for Anthropic
-        if os.environ.get("ANTHROPIC_API_KEY"):
+        anthropic_key = env_loader.get_api_key("anthropic")
+        if anthropic_key:
             try:
                 import anthropic
                 self.clients[LLMProvider.ANTHROPIC] = anthropic.AsyncAnthropic(
-                    api_key=os.environ["ANTHROPIC_API_KEY"]
+                    api_key=anthropic_key
                 )
-                logger.info("Anthropic client initialized")
+                masked_key = env_loader.mask_api_key(anthropic_key)
+                logger.info(f"Anthropic client initialized with key: {masked_key}")
             except ImportError:
                 logger.warning("Anthropic library not installed")
         

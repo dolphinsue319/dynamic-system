@@ -5,6 +5,8 @@ import logging
 from typing import Optional, Dict, Any
 import json
 
+from ..utils.env_loader import EnvLoader
+
 try:
     import redis
     REDIS_AVAILABLE = True
@@ -27,11 +29,25 @@ class PromptCache:
         """Initialize cache backend"""
         if REDIS_AVAILABLE:
             try:
-                self.redis_client = redis.Redis(
-                    host='localhost',
-                    port=6379,
-                    decode_responses=True
-                )
+                # Load Redis config from environment
+                env_loader = EnvLoader()
+                redis_config = env_loader.get_redis_config()
+                
+                # Parse Redis URL if provided
+                if redis_config.get('url'):
+                    self.redis_client = redis.from_url(
+                        redis_config['url'],
+                        password=redis_config.get('password'),
+                        decode_responses=True
+                    )
+                else:
+                    # Fallback to localhost if no URL provided
+                    self.redis_client = redis.Redis(
+                        host='localhost',
+                        port=6379,
+                        decode_responses=True
+                    )
+                
                 # Test connection
                 self.redis_client.ping()
                 self.use_redis = True
