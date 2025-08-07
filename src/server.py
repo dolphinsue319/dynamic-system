@@ -14,6 +14,7 @@ from orchestrator.coordinator import Orchestrator
 from utils.config_loader import ConfigLoader
 from utils.logger import setup_logger
 from monitoring.metrics_collector import MetricsCollector
+from models.requests import OrchestrateRequest, AnalyzeRequest, MetricsRequest
 
 # Setup logging
 logger = setup_logger(__name__)
@@ -151,20 +152,24 @@ class DynamicOrchestratorServer:
             )]
     
     async def _handle_orchestrate(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle orchestrate tool call"""
-        request = arguments.get("request")
-        context = arguments.get("context", {})
-        options = arguments.get("options", {})
+        """Handle orchestrate tool call with input validation"""
+        # Validate input
+        try:
+            validated = OrchestrateRequest(**arguments)
+            request_data = validated.dict()
+        except Exception as e:
+            logger.error(f"Input validation failed: {e}")
+            return {"error": f"Invalid input: {str(e)}"}
         
         # Start metrics tracking
         request_id = self.metrics.start_request() if self.metrics else None
         
         try:
-            # Execute orchestration
+            # Execute orchestration with validated data
             result = await self.orchestrator.orchestrate(
-                request=request,
-                context=context,
-                options=options
+                request=request_data['request'],
+                context=request_data['context'],
+                options=request_data['options']
             )
             
             # Track metrics
@@ -179,8 +184,14 @@ class DynamicOrchestratorServer:
             raise
     
     async def _handle_analyze(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle analyze_request tool call"""
-        request = arguments.get("request")
+        """Handle analyze_request tool call with input validation"""
+        # Validate input
+        try:
+            validated = AnalyzeRequest(**arguments)
+            request = validated.request
+        except Exception as e:
+            logger.error(f"Input validation failed: {e}")
+            return {"error": f"Invalid input: {str(e)}"}
         
         # Analyze without executing
         analysis = await self.orchestrator.analyze(request)
@@ -194,8 +205,14 @@ class DynamicOrchestratorServer:
         }
     
     async def _handle_get_metrics(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle get_metrics tool call"""
-        period = arguments.get("period", "5m")
+        """Handle get_metrics tool call with input validation"""
+        # Validate input
+        try:
+            validated = MetricsRequest(**arguments)
+            period = validated.period
+        except Exception as e:
+            logger.error(f"Input validation failed: {e}")
+            return {"error": f"Invalid input: {str(e)}"}
         
         if not self.metrics:
             return {"error": "Metrics not initialized"}

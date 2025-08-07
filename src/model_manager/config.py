@@ -31,12 +31,13 @@ class ModelConfig:
 # Predefined model configurations
 MODEL_CONFIGS = {
     # OpenAI Models
+    # OpenAI Models (Updated pricing and latest models)
     "gpt-4o": ModelConfig(
         name="gpt-4o",
         provider="openai",
         tier=ModelTier.PREMIUM,
-        input_cost_per_1k=0.005,
-        output_cost_per_1k=0.015,
+        input_cost_per_1k=0.0025,  # Updated pricing
+        output_cost_per_1k=0.01,    # Updated pricing
         max_context=128000,
         supports_vision=True,
         average_latency_ms=3000,
@@ -53,6 +54,17 @@ MODEL_CONFIGS = {
         average_latency_ms=2000,
         reliability_score=0.97
     ),
+    "gpt-4-turbo": ModelConfig(
+        name="gpt-4-turbo",
+        provider="openai",
+        tier=ModelTier.PREMIUM,
+        input_cost_per_1k=0.01,
+        output_cost_per_1k=0.03,
+        max_context=128000,
+        supports_vision=True,
+        average_latency_ms=3500,
+        reliability_score=0.97
+    ),
     "gpt-3.5-turbo": ModelConfig(
         name="gpt-3.5-turbo",
         provider="openai",
@@ -63,24 +75,24 @@ MODEL_CONFIGS = {
         average_latency_ms=1000,
         reliability_score=0.95
     ),
-    "o3": ModelConfig(
-        name="o3",
+    "o1-preview": ModelConfig(
+        name="o1-preview",
         provider="openai",
         tier=ModelTier.PREMIUM,
         input_cost_per_1k=0.015,
         output_cost_per_1k=0.06,
-        max_context=200000,
-        average_latency_ms=5000,
+        max_context=128000,
+        average_latency_ms=20000,  # o1 models are slower but more thoughtful
         reliability_score=0.99
     ),
-    "o3-mini": ModelConfig(
-        name="o3-mini",
+    "o1-mini": ModelConfig(
+        name="o1-mini",
         provider="openai",
         tier=ModelTier.STANDARD,
         input_cost_per_1k=0.003,
         output_cost_per_1k=0.012,
-        max_context=200000,
-        average_latency_ms=3000,
+        max_context=128000,
+        average_latency_ms=10000,  # Faster than o1-preview but still slower
         reliability_score=0.97
     ),
     
@@ -119,7 +131,7 @@ MODEL_CONFIGS = {
         reliability_score=0.97
     ),
     
-    # Anthropic Models
+    # Anthropic Models (Updated with latest models)
     "claude-3-opus-20240229": ModelConfig(
         name="claude-3-opus-20240229",
         provider="anthropic",
@@ -129,6 +141,17 @@ MODEL_CONFIGS = {
         max_context=200000,
         supports_vision=True,
         average_latency_ms=4000,
+        reliability_score=0.98
+    ),
+    "claude-3-5-sonnet-20241022": ModelConfig(
+        name="claude-3-5-sonnet-20241022",
+        provider="anthropic",
+        tier=ModelTier.PREMIUM,
+        input_cost_per_1k=0.003,
+        output_cost_per_1k=0.015,
+        max_context=200000,
+        supports_vision=True,
+        average_latency_ms=2000,
         reliability_score=0.98
     ),
     "claude-3-sonnet-20240229": ModelConfig(
@@ -152,6 +175,17 @@ MODEL_CONFIGS = {
         supports_vision=True,
         average_latency_ms=1200,
         reliability_score=0.95
+    ),
+    "claude-3-5-haiku-20241022": ModelConfig(
+        name="claude-3-5-haiku-20241022",
+        provider="anthropic",
+        tier=ModelTier.BUDGET,
+        input_cost_per_1k=0.001,
+        output_cost_per_1k=0.005,
+        max_context=200000,
+        supports_vision=True,
+        average_latency_ms=1000,
+        reliability_score=0.96
     ),
 }
 

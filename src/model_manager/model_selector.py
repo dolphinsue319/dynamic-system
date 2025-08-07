@@ -2,9 +2,9 @@
 
 import logging
 from typing import Dict, Any, List, Optional
-import os
 
 from .config import MODEL_CONFIGS, ModelConfig, ModelTier, ModelCostCalculator
+from ..utils.env_loader import EnvLoader
 
 logger = logging.getLogger(__name__)
 
@@ -27,24 +27,29 @@ class ModelSelector:
         available = []
         
         # Check OpenAI models
-        if os.environ.get("OPENAI_API_KEY"):
+        openai_key = EnvLoader().get_api_key("openai")
+        if openai_key:
             available.extend([
-                "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
-                "o3", "o3-mini"
+                "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo",
+                "o1-preview", "o1-mini"
             ])
         
         # Check Google models
-        if os.environ.get("GOOGLE_API_KEY"):
+        google_key = EnvLoader().get_api_key("google")
+        if google_key:
             available.extend([
                 "gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"
             ])
         
         # Check Anthropic models
-        if os.environ.get("ANTHROPIC_API_KEY"):
+        anthropic_key = EnvLoader().get_api_key("anthropic")
+        if anthropic_key:
             available.extend([
                 "claude-3-opus-20240229",
+                "claude-3-5-sonnet-20241022",
                 "claude-3-sonnet-20240229",
-                "claude-3-haiku-20240307"
+                "claude-3-haiku-20240307",
+                "claude-3-5-haiku-20241022"
             ])
         
         # Filter to only models we have configs for
