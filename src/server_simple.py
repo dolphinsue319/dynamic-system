@@ -4,6 +4,7 @@
 import asyncio
 import json
 import logging
+import sys
 from typing import Any, Dict, List, Optional
 
 from mcp import stdio_server
@@ -135,6 +136,8 @@ async def handle_list_tools() -> List[Tool]:
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
     """Handle tool calls"""
+    logger.info(f"🎯 TOOL CALLED: {name} with arguments: {arguments}")
+    print(f"🎯 TOOL CALLED: {name}", file=sys.stderr)  # This will appear in Claude logs
     try:
         if not orchestrator:
             await initialize_server()

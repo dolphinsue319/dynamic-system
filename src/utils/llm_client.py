@@ -210,12 +210,18 @@ class LLMClient:
             
             model_instance = genai.GenerativeModel(model_name)
             
-            response = await model_instance.generate_content_async(
-                prompt,
-                generation_config={
-                    "temperature": temperature,
-                    "max_output_tokens": max_tokens,
-                }
+            # Use asyncio to run the synchronous method
+            import asyncio
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: model_instance.generate_content(
+                    prompt,
+                    generation_config={
+                        "temperature": temperature,
+                        "max_output_tokens": max_tokens,
+                    }
+                )
             )
             return response.text
         except Exception as e:

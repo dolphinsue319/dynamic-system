@@ -101,7 +101,7 @@ class Orchestrator:
         options = options or {}
         
         # Initialize tracking
-        request_id = await self.metrics.start_request()
+        request_id = self.metrics.start_request()
         orchestration_steps = []
         
         try:
