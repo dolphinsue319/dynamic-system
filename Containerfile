@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:${PATH}"
+ENV PATH="/root/.local/bin:${PATH}"
 
 # Set working directory
 WORKDIR /app
@@ -29,10 +29,9 @@ RUN uv pip install --no-cache -r requirements.txt
 # Stage 2: Runtime
 FROM python:3.11-slim
 
-# Install runtime dependencies
+# Install runtime dependencies (minimal - no nodejs/npm needed for Python MCP)
 RUN apt-get update && apt-get install -y \
-    nodejs \
-    npm \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user

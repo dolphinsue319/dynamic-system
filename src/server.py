@@ -10,11 +10,11 @@ from mcp.server import Server
 from mcp.types import Tool, TextContent
 import mcp
 
-from orchestrator.coordinator import Orchestrator
-from utils.config_loader import ConfigLoader
-from utils.logger import setup_logger
-from monitoring.metrics_collector import MetricsCollector
-from models.requests import OrchestrateRequest, AnalyzeRequest, MetricsRequest
+from src.orchestrator.coordinator import Orchestrator
+from src.utils.config_loader import ConfigLoader
+from src.utils.logger import setup_logger
+from src.monitoring.metrics_collector import MetricsCollector
+from src.models.requests import OrchestrateRequest, AnalyzeRequest, MetricsRequest
 
 # Setup logging
 logger = setup_logger(__name__)

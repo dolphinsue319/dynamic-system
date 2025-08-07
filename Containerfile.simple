@@ -1,0 +1,50 @@
+# Simplified single-stage build for Dynamic Orchestrator MCP
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency files
+COPY requirements.txt ./
+
+# Create virtual environment and install dependencies
+RUN uv venv .venv
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Install dependencies
+RUN uv pip install --no-cache -r requirements.txt
+
+# Copy application code
+COPY src/ ./src/
+COPY config.yaml ./
+COPY config/ ./config/
+
+# Create directories for runtime
+RUN mkdir -p /app/logs /app/data
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV LOG_LEVEL=INFO
+ENV CACHE_TTL=3600
+ENV MCP_PORT=8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import sys; sys.exit(0)" || exit 1
+
+# Expose MCP port
+EXPOSE 8080
+
+# Run the MCP server
+CMD ["python", "-m", "src.server"]
