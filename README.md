@@ -76,6 +76,7 @@ Based on real-world usage patterns:
 
 - Python 3.11+
 - uv (for Python package management)
+- Pydantic v2.0+ (for request validation)
 - Redis (optional, for caching)
 - Podman (optional, for containerization)
 
@@ -112,7 +113,10 @@ python demo_claude_code.py
 
 5. **Run the MCP server:**
 ```bash
-python -m src.server
+# Use the simplified server (recommended for Pydantic v2 compatibility)
+python -m src.server_simple
+
+# The server will start and listen for MCP connections
 ```
 
 ### Docker/Podman Deployment
@@ -327,7 +331,9 @@ dynamic-orchestrator-mcp/
 │   ├── mcp_manager/        # MCP service management
 │   ├── monitoring/         # Metrics collection
 │   ├── utils/             # Utilities including Claude Code client
-│   └── server.py          # MCP server implementation
+│   ├── models/            # Pydantic v2 request validation models
+│   ├── server.py          # Original MCP server implementation
+│   └── server_simple.py   # Simplified MCP server (recommended)
 ├── config/                # Configuration files
 ├── tests/                # Test suite
 ├── examples/             # Usage examples
@@ -347,7 +353,7 @@ dynamic-orchestrator-mcp/
 ## 🛡️ Security
 
 - API keys stored securely in environment variables
-- Input validation with Pydantic models
+- Input validation with Pydantic v2 models
 - No API keys needed when using Claude Code
 - See [API_KEY_SECURITY.md](API_KEY_SECURITY.md) for details
 
