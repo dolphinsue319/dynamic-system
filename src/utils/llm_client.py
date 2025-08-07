@@ -200,11 +200,11 @@ class LLMClient:
         genai = self.clients[LLMProvider.GOOGLE]
         
         try:
-            # Map model names
+            # Map model names to correct Gemini model names
             if "flash" in model.lower():
-                model_name = "gemini-2.0-flash-latest"
+                model_name = "gemini-2.0-flash-exp"  # Correct experimental model name
             elif "pro" in model.lower():
-                model_name = "gemini-1.5-pro-latest"
+                model_name = "gemini-1.5-pro"
             else:
                 model_name = model
             
