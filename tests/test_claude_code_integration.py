@@ -13,6 +13,14 @@ import os
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Reset Prometheus registry to avoid duplicate metrics in tests
+try:
+    from prometheus_client import REGISTRY, CollectorRegistry
+    REGISTRY._collector_to_names.clear()
+    REGISTRY._names_to_collectors.clear()
+except ImportError:
+    pass
+
 from src.orchestrator.coordinator import Orchestrator
 from src.utils.config_loader import ConfigLoader
 from src.utils.logger import setup_logger
