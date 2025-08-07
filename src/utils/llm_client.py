@@ -5,12 +5,14 @@ from typing import Any, Dict, Optional, List
 from enum import Enum
 
 from .env_loader import EnvLoader
+from .claude_code_client import ClaudeCodeLLMClient
 
 logger = logging.getLogger(__name__)
 
 
 class LLMProvider(Enum):
     """Supported LLM providers"""
+    CLAUDE_CODE = "claude_code"  # Priority provider
     OPENAI = "openai"
     GOOGLE = "google"
     ANTHROPIC = "anthropic"
@@ -19,15 +21,33 @@ class LLMProvider(Enum):
 class LLMClient:
     """Unified client for multiple LLM providers"""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], mcp_session=None):
         self.config = config
         self.clients = {}
         self.initialized = False
+        self.mcp_session = mcp_session
+        self.claude_code_client = None
     
-    async def initialize(self):
+    async def initialize(self, mcp_session=None):
         """Initialize LLM clients based on available API keys"""
         if self.initialized:
             return
+        
+        # Update MCP session if provided
+        if mcp_session:
+            self.mcp_session = mcp_session
+        
+        # Initialize Claude Code client first (priority)
+        if self.config.get("use_claude_code", True):
+            try:
+                self.claude_code_client = ClaudeCodeLLMClient(self.mcp_session)
+                await self.claude_code_client.initialize()
+                
+                if self.claude_code_client.is_available():
+                    self.clients[LLMProvider.CLAUDE_CODE] = self.claude_code_client
+                    logger.info("Claude Code LLM client initialized (priority provider)")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Claude Code client: {e}")
         
         # Load environment variables securely
         env_loader = EnvLoader()
@@ -96,7 +116,23 @@ class LLMClient:
         Returns:
             Generated text
         """
-        # Determine provider from model name
+        # First, try Claude Code if available and model is supported
+        if (self.claude_code_client and 
+            self.claude_code_client.is_available() and
+            self.claude_code_client.supports_model(model)):
+            try:
+                logger.info(f"Using Claude Code for model {model}")
+                return await self.claude_code_client.complete(
+                    prompt=prompt,
+                    model=model,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    **kwargs
+                )
+            except Exception as e:
+                logger.warning(f"Claude Code completion failed, falling back: {e}")
+        
+        # Fall back to external APIs
         provider = self._get_provider_from_model(model)
         
         if provider == LLMProvider.OPENAI:

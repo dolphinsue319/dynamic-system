@@ -23,11 +23,12 @@ logger = setup_logger(__name__)
 class DynamicOrchestratorServer:
     """Dynamic Orchestrator MCP Server"""
     
-    def __init__(self):
+    def __init__(self, mcp_session=None):
         self.server = Server("dynamic-orchestrator")
         self.orchestrator: Optional[Orchestrator] = None
         self.metrics: Optional[MetricsCollector] = None
         self.config: Optional[Dict] = None
+        self.mcp_session = mcp_session  # Store MCP session for Claude Code access
         
         # Register handlers
         self.server.list_tools(self.handle_list_tools)
@@ -40,8 +41,8 @@ class DynamicOrchestratorServer:
             config_loader = ConfigLoader()
             self.config = config_loader.load_all()
             
-            # Initialize orchestrator
-            self.orchestrator = Orchestrator(self.config)
+            # Initialize orchestrator with MCP session for Claude Code access
+            self.orchestrator = Orchestrator(self.config, mcp_session=self.mcp_session)
             await self.orchestrator.initialize()
             
             # Initialize metrics collector

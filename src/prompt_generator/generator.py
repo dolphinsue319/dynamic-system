@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 class PromptGenerator:
     """Generates dynamic prompts based on intent and context"""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], mcp_session=None):
         self.config = config
-        self.llm_client = LLMClient(config)
+        self.llm_client = LLMClient(config, mcp_session=mcp_session)
         self.cache = PromptCache()
         
         # Meta-prompt for generating focused prompts

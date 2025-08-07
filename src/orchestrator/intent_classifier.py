@@ -21,9 +21,9 @@ class Intent(Enum):
 class IntentClassifier:
     """Classifies user requests into intent categories"""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], mcp_session=None):
         self.config = config
-        self.llm_client = LLMClient(config)
+        self.llm_client = LLMClient(config, mcp_session=mcp_session)
         self.intents = [intent.value for intent in Intent]
         
         # Classification prompt template

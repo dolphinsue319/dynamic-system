@@ -12,11 +12,13 @@ logger = logging.getLogger(__name__)
 class ModelSelector:
     """Selects appropriate models based on various factors"""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], claude_code_client=None):
         self.config = config
         self.model_configs = MODEL_CONFIGS
         self.cost_calculator = ModelCostCalculator()
+        self.claude_code_client = claude_code_client
         self.available_models = self._get_available_models()
+        self.claude_code_models = self._get_claude_code_models()
         
     async def initialize(self):
         """Initialize the model selector"""
@@ -57,6 +59,12 @@ class ModelSelector:
         
         return available
     
+    def _get_claude_code_models(self) -> List[str]:
+        """Get models available through Claude Code"""
+        if self.claude_code_client and self.claude_code_client.is_available():
+            return self.claude_code_client.get_available_models()
+        return []
+    
     async def select_model(
         self,
         complexity: str,
@@ -77,13 +85,25 @@ class ModelSelector:
         # Get complexity-based recommendations
         recommended_models = self._get_models_for_complexity(complexity)
         
+        # Prioritize Claude Code models if available
+        if self.config.get("use_claude_code_first", True) and self.claude_code_models:
+            # Filter recommended models to prefer Claude Code ones
+            claude_code_available = [m for m in recommended_models if m in self.claude_code_models]
+            if claude_code_available:
+                logger.info(f"Using Claude Code model: {claude_code_available[0]} (no API cost)")
+                return claude_code_available[0]
+        
         # Apply user preferences
         if options.get("preferred_models"):
             preferred = options["preferred_models"]
             # Use preferred model if available
             for model in preferred:
-                if model in self.available_models:
-                    logger.info(f"Using preferred model: {model}")
+                # Check Claude Code first
+                if model in self.claude_code_models:
+                    logger.info(f"Using preferred Claude Code model: {model}")
+                    return model
+                elif model in self.available_models:
+                    logger.info(f"Using preferred external model: {model}")
                     return model
         
         # Apply cost constraints

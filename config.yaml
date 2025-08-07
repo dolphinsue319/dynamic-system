@@ -1,5 +1,24 @@
 # Dynamic Orchestrator Configuration
 
+# Claude Code Priority Settings
+use_claude_code: true  # Prioritize Claude Code models
+use_claude_code_first: true  # Always try Claude Code before external APIs
+
+# Claude Code Model Mapping
+claude_code_models:
+  simple:
+    - gemini-2.0-flash
+    - gemini-2.5-flash
+    - claude-3-5-haiku
+  moderate:
+    - gpt-4o-mini
+    - gemini-2.5-pro
+    - claude-3-5-sonnet
+  complex:
+    - gpt-4o
+    - claude-opus-4
+    - o1-preview
+
 # Intent Classification
 classification:
   model: gemini-2.0-flash

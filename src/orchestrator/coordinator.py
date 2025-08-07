@@ -35,15 +35,21 @@ class OrchestrationResult:
 class Orchestrator:
     """Main orchestrator for dynamic system"""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], mcp_session=None):
         self.config = config
+        self.mcp_session = mcp_session
         
         # Initialize components
-        self.intent_classifier = IntentClassifier(config.get("models", {}))
-        self.complexity_analyzer = ComplexityAnalyzer(config.get("models", {}))
-        self.prompt_generator = PromptGenerator(config.get("models", {}))
+        self.intent_classifier = IntentClassifier(config.get("models", {}), mcp_session=mcp_session)
+        self.complexity_analyzer = ComplexityAnalyzer(config.get("models", {}), mcp_session=mcp_session)
+        self.prompt_generator = PromptGenerator(config.get("models", {}), mcp_session=mcp_session)
         self.service_selector = MCPServiceSelector(config.get("mcp_services", {}))
-        self.model_selector = ModelSelector(config.get("models", {}))
+        
+        # Initialize model selector with Claude Code support
+        from ..utils.claude_code_client import ClaudeCodeLLMClient
+        claude_code_client = ClaudeCodeLLMClient(mcp_session) if mcp_session else None
+        self.model_selector = ModelSelector(config.get("models", {}), claude_code_client=claude_code_client)
+        
         self.fallback_handler = FallbackHandler(config.get("models", {}))
         self.metrics = MetricsCollector(config.get("monitoring", {}))
         
