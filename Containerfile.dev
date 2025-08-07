@@ -1,0 +1,54 @@
+# Development Containerfile with hot reload
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    git \
+    vim \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Create non-root user
+RUN useradd -m -u 1000 mcp && \
+    mkdir -p /app && \
+    chown -R mcp:mcp /app
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency files
+COPY --chown=mcp:mcp pyproject.toml requirements.txt requirements-dev.txt ./
+
+# Create virtual environment and install dependencies
+USER mcp
+RUN uv venv .venv
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Install dependencies
+RUN uv pip install --no-cache -r requirements.txt && \
+    uv pip install --no-cache -r requirements-dev.txt
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV LOG_LEVEL=DEBUG
+
+# Install watchdog for hot reload
+RUN uv pip install watchdog
+
+# Expose ports
+EXPOSE 8080
+
+# Volume for code (mounted at runtime for hot reload)
+VOLUME ["/app/src", "/app/config", "/app/tests"]
+
+# Run with watchdog for auto-reload
+CMD ["watchmedo", "auto-restart", "--directory=./src", "--pattern=*.py", "--recursive", "--", "python", "src/server.py"]

@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # Redis for caching
+  redis:
+    image: docker.io/redis:7-alpine
+    container_name: orchestrator-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - orchestrator-network
+
+  # Dynamic Orchestrator MCP Service
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: dynamic-orchestrator-mcp
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      # API Keys (set via .env file or environment)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      
+      # Redis configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      
+      # Service configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MCP_PORT=8080
+      - CACHE_TTL=3600
+      
+    ports:
+      - "8080:8080"
+    volumes:
+      # Configuration files (read-only)
+      - ./config:/app/config:ro
+      
+      # Logs (writable)
+      - ./logs:/app/logs
+      
+      # Data persistence
+      - orchestrator-data:/app/data
+      
+    networks:
+      - orchestrator-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Prometheus for metrics
+  prometheus:
+    image: docker.io/prom/prometheus:latest
+    container_name: orchestrator-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    networks:
+      - orchestrator-network
+    restart: unless-stopped
+
+  # Optional: Grafana for visualization
+  grafana:
+    image: docker.io/grafana/grafana:latest
+    container_name: orchestrator-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - orchestrator-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+networks:
+  orchestrator-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  orchestrator-data:
+  prometheus-data:
+  grafana-data:

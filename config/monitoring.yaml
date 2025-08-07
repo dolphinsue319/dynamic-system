@@ -1,0 +1,62 @@
+# Monitoring configuration
+monitoring:
+  # Metrics to track
+  metrics:
+    performance:
+      - response_time_ms
+      - classification_time_ms
+      - prompt_generation_time_ms
+      - execution_time_ms
+      - total_latency_ms
+      
+    cost:
+      - tokens_input
+      - tokens_output
+      - tokens_saved
+      - api_cost_usd
+      - cost_per_intent
+      
+    quality:
+      - classification_accuracy
+      - success_rate
+      - error_rate
+      - fallback_rate
+      
+    usage:
+      - requests_per_minute
+      - intent_distribution
+      - model_distribution
+      - mcp_service_usage
+      - cache_hit_rate
+  
+  # Alerting thresholds
+  alerts:
+    high_latency:
+      metric: response_time_ms
+      threshold: 5000
+      window: 1m
+      
+    high_error_rate:
+      metric: error_rate
+      threshold: 0.05
+      window: 5m
+      
+    high_cost:
+      metric: api_cost_usd
+      threshold: 10.0
+      window: 1h
+  
+  # Reporting
+  reporting:
+    interval: 60  # seconds
+    export_format: ["json", "prometheus"]
+    
+  # Storage
+  storage:
+    type: redis
+    retention_days: 30
+    aggregation_intervals:
+      - 1m
+      - 5m
+      - 1h
+      - 1d

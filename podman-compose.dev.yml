@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Redis for caching (development)
+  redis-dev:
+    image: docker.io/redis:7-alpine
+    container_name: orchestrator-redis-dev
+    ports:
+      - "6379:6379"
+    command: redis-server --loglevel debug
+    networks:
+      - orchestrator-dev-network
+
+  # Dynamic Orchestrator MCP Service (development with hot reload)
+  orchestrator-dev:
+    build:
+      context: .
+      dockerfile: Containerfile.dev
+    container_name: dynamic-orchestrator-mcp-dev
+    depends_on:
+      - redis-dev
+    environment:
+      # API Keys (from .env file)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      
+      # Redis configuration
+      - REDIS_HOST=redis-dev
+      - REDIS_PORT=6379
+      
+      # Development settings
+      - LOG_LEVEL=DEBUG
+      - MCP_PORT=8080
+      - CACHE_TTL=60
+      - PYTHONDEBUG=1
+      
+    ports:
+      - "8080:8080"
+      - "5678:5678"  # Python debugger port
+    volumes:
+      # Mount source code for hot reload
+      - ./src:/app/src:z
+      - ./config:/app/config:z
+      - ./tests:/app/tests:z
+      
+      # Logs
+      - ./logs:/app/logs:z
+      
+    networks:
+      - orchestrator-dev-network
+    stdin_open: true
+    tty: true
+    command: |
+      bash -c "
+        echo 'Starting development server with hot reload...'
+        watchmedo auto-restart \
+          --directory=./src \
+          --pattern='*.py' \
+          --recursive \
+          -- python src/server.py
+      "
+
+  # Redis Commander for Redis GUI
+  redis-commander:
+    image: docker.io/rediscommander/redis-commander:latest
+    container_name: orchestrator-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis-dev:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - orchestrator-dev-network
+    depends_on:
+      - redis-dev
+
+networks:
+  orchestrator-dev-network:
+    driver: bridge

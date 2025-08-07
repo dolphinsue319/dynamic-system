@@ -1,0 +1,74 @@
+# MCP services configuration
+services:
+  filesystem:
+    type: stdio
+    command: ["npx", "-y", "@modelcontextprotocol/server-filesystem"]
+    args: ["--allowed-directories", "/tmp,/home,/Users"]
+    supported_intents:
+      - read
+      - write
+      - search
+      - manage
+    description: "File system operations"
+    
+  github:
+    type: stdio
+    command: ["npx", "-y", "@modelcontextprotocol/server-github"]
+    env:
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+    supported_intents:
+      - write
+      - manage
+      - analyze
+    description: "GitHub repository operations"
+    
+  database:
+    type: stdio
+    command: ["npx", "-y", "@modelcontextprotocol/server-postgres"]
+    env:
+      DATABASE_URL: "${DATABASE_URL}"
+    supported_intents:
+      - read
+      - write
+      - analyze
+      - search
+    description: "Database operations"
+    
+  web-search:
+    type: stdio
+    command: ["npx", "-y", "@modelcontextprotocol/server-search"]
+    supported_intents:
+      - search
+      - analyze
+    description: "Web search operations"
+    
+  memory:
+    type: stdio
+    command: ["npx", "-y", "@modelcontextprotocol/server-memory"]
+    supported_intents:
+      - read
+      - write
+      - manage
+    description: "Memory and context management"
+
+# Intent to service mapping rules
+intent_mapping:
+  read:
+    primary: ["filesystem", "database", "memory"]
+    secondary: ["github"]
+    
+  write:
+    primary: ["filesystem", "database", "memory"]
+    secondary: ["github"]
+    
+  search:
+    primary: ["filesystem", "database", "web-search"]
+    secondary: ["github"]
+    
+  analyze:
+    primary: ["database"]
+    secondary: ["github", "web-search"]
+    
+  manage:
+    primary: ["filesystem", "github", "memory"]
+    secondary: ["database"]

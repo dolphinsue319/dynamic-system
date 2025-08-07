@@ -1,0 +1,52 @@
+# Model configuration for dynamic orchestrator
+models:
+  # Model for intent classification
+  classifier:
+    default: "gemini-2.0-flash"
+    alternatives:
+      - "gpt-3.5-turbo"
+      - "claude-3-haiku"
+    max_tokens: 100
+    temperature: 0.1
+  
+  # Model for prompt generation
+  prompt_generator:
+    default: "gemini-2.0-flash"
+    alternatives:
+      - "gpt-3.5-turbo"
+    max_tokens: 500
+    temperature: 0.3
+  
+  # Model for complexity analysis
+  complexity_analyzer:
+    default: "gemini-2.0-flash"
+    alternatives:
+      - "gpt-3.5-turbo"
+    max_tokens: 50
+    temperature: 0.1
+  
+  # Main execution models (selected based on complexity)
+  execution:
+    simple:
+      preferred: "gemini-2.0-flash"
+      fallback:
+        - "gpt-3.5-turbo"
+        - "claude-3-haiku"
+    
+    moderate:
+      preferred: "gpt-4o-mini"
+      fallback:
+        - "claude-3-sonnet"
+        - "gemini-pro"
+    
+    complex:
+      preferred: "gpt-4o"
+      fallback:
+        - "claude-3-opus"
+        - "gpt-4-turbo"
+
+# API key environment variables
+api_keys:
+  openai: "OPENAI_API_KEY"
+  google: "GOOGLE_API_KEY"
+  anthropic: "ANTHROPIC_API_KEY"
