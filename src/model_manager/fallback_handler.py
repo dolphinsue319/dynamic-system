@@ -57,8 +57,9 @@ class FallbackHandler:
         
         try:
             # Initialize LLM client first
+            logger.info(f"FallbackHandler initializing LLMClient with mcp_session: {self.mcp_session is not None}")
             await self.llm_client.initialize(self.mcp_session)
-            logger.info("FallbackHandler initialized successfully")
+            logger.info(f"FallbackHandler initialized successfully, LLMClient clients: {list(self.llm_client.clients.keys())}")
             self.initialized = True
             
         except Exception as e:
@@ -145,6 +146,9 @@ class FallbackHandler:
                     return self._build_response(result, attempts, start_time)
         
         # All attempts failed
+        logger.error(f"All execution attempts failed. Total attempts: {len(attempts)}")
+        for i, attempt in enumerate(attempts):
+            logger.error(f"Attempt {i+1}: model={attempt.model}, success={attempt.success}, error={attempt.error}")
         return self._build_failure_response(attempts, start_time)
     
     async def _try_execution(
@@ -196,12 +200,30 @@ class FallbackHandler:
                 messages[0]["content"] += f"\n\n{service_context}"
             
             # Call LLM
-            response = await self.llm_client.complete(
-                prompt=messages[1]["content"],
-                model=model,
-                temperature=0.7,
-                max_tokens=2000
-            )
+            logger.info(f"FallbackHandler attempting LLM call with model: {model}")
+            logger.debug(f"LLMClient available clients: {list(self.llm_client.clients.keys())}")
+            logger.debug(f"LLMClient initialized: {self.llm_client.initialized}")
+            
+            # Add debug info directly to prevent loss
+            debug_info = {
+                "llm_client_initialized": self.llm_client.initialized,
+                "available_clients": list(self.llm_client.clients.keys()),
+                "model_requested": model
+            }
+            
+            try:
+                response = await self.llm_client.complete(
+                    prompt=messages[1]["content"],
+                    model=model,
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                logger.info(f"LLM call successful, response length: {len(response) if response else 0}")
+                debug_info["llm_call_success"] = True
+            except Exception as llm_e:
+                logger.error(f"LLM call failed: {llm_e}")
+                debug_info["llm_call_error"] = str(llm_e)
+                raise Exception(f"LLM call failed. Debug: {debug_info}") from llm_e
             
             # Calculate metrics
             duration_ms = (time.time() - attempt_start) * 1000

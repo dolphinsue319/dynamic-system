@@ -4,6 +4,12 @@ import logging
 from typing import Dict, Any, Optional, List
 import json
 
+try:
+    from mcp.types import CallToolResult
+except ImportError:
+    # Fallback for when MCP types are not available
+    CallToolResult = type("CallToolResult", (), {})
+
 logger = logging.getLogger(__name__)
 
 

@@ -177,20 +177,43 @@ class Orchestrator:
             
             # Step 6: Execute with fallback handling
             logger.info(f"Executing with model: {selected_model}")
-            execution_result = await self.fallback_handler.execute_with_fallback(
-                request=request,
-                prompt=generated_prompt,
-                model=selected_model,
-                services=selected_services,
-                context=context
-            )
+            try:
+                execution_result = await self.fallback_handler.execute_with_fallback(
+                    request=request,
+                    prompt=generated_prompt,
+                    model=selected_model,
+                    services=selected_services,
+                    context=context
+                )
+                # Debug execution result (sanitized to prevent data exposure)
+                debug_result = {k: v for k, v in execution_result.items() if k != 'response'}
+                debug_result['response_length'] = len(execution_result.get('response', ''))
+                logger.info(f"Execution result summary: {debug_result}")
+            except Exception as exec_error:
+                # Catch any exceptions from fallback handler
+                logger.error(f"Exception in fallback handler: {exec_error}")
+                execution_result = {
+                    "success": False,
+                    "error": f"Exception in execution: {str(exec_error)}",
+                    "attempts": []
+                }
             
-            orchestration_steps.append({
+            execution_step = {
                 "step": "execution",
                 "result": "success" if execution_result.get("success") else "failed",
                 "model_used": execution_result.get("model_used"),
-                "duration_ms": (time.time() - start_time) * 1000
-            })
+                "duration_ms": (time.time() - start_time) * 1000,
+                "error": execution_result.get("error") if not execution_result.get("success") else None,
+                "attempts": execution_result.get("attempts", []) if not execution_result.get("success") else []
+            }
+            
+            # Also log the details for debugging if execution failed
+            if not execution_result.get("success"):
+                logger.error(f"Execution failed: {execution_result.get('error')}")
+                for i, attempt in enumerate(execution_result.get("attempts", [])):
+                    logger.error(f"Failed attempt {i+1}: {attempt}")
+                
+            orchestration_steps.append(execution_step)
             
             # Calculate metrics
             total_duration = (time.time() - start_time) * 1000

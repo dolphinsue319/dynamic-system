@@ -26,6 +26,7 @@ except ImportError:
 
 # Setup logging
 logger = setup_logger(__name__)
+logger.info("MCP Server starting with logging initialized")
 
 
 class DynamicOrchestratorServer:
@@ -36,7 +37,9 @@ class DynamicOrchestratorServer:
         self.orchestrator: Optional[Orchestrator] = None
         self.metrics: Optional[MetricsCollector] = None
         self.config: Optional[Dict] = None
-        self.mcp_session = mcp_session  # Store MCP session for Claude Code access
+        # In MCP server context, we don't have access to external MCP sessions
+        # The server IS the MCP interface, not a client
+        self.mcp_session = None
         
         # Handlers will be registered with decorators
         
@@ -51,8 +54,9 @@ class DynamicOrchestratorServer:
             self.metrics = MetricsCollector(self.config.get("monitoring", {}))
             await self.metrics.initialize()
             
-            # Initialize orchestrator with MCP session for Claude Code access and metrics
-            self.orchestrator = Orchestrator(self.config, mcp_session=self.mcp_session, metrics=self.metrics)
+            # Initialize orchestrator without MCP session (server context doesn't need Claude Code client)
+            # The MCP server uses external providers instead of trying to call back to Claude Code
+            self.orchestrator = Orchestrator(self.config, mcp_session=None, metrics=self.metrics)
             await self.orchestrator.initialize()
             
             logger.info("Dynamic Orchestrator MCP Server initialized successfully")
@@ -63,7 +67,8 @@ class DynamicOrchestratorServer:
     
     async def handle_list_tools(self) -> List[Tool]:
         """List available tools"""
-        return [
+        import os
+        tools = [
             Tool(
                 name="orchestrate",
                 description=(
@@ -130,6 +135,32 @@ class DynamicOrchestratorServer:
                 }
             )
         ]
+        
+        # Only include debug tools if explicitly enabled
+        if os.environ.get("ENABLE_DEBUG_TOOLS") == "true":
+            tools.append(
+                Tool(
+                    name="test_llm",
+                    description="Test LLM client directly",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "prompt": {
+                                "type": "string",
+                                "description": "Test prompt"
+                            },
+                            "model": {
+                                "type": "string",
+                                "description": "Model to test",
+                                "default": "gemini-2.0-flash"
+                            }
+                        },
+                        "required": ["prompt"]
+                    }
+                )
+            )
+        
+        return tools
     
     async def handle_call_tool(self, name: str, arguments: Dict[str, Any]) -> List[TextContent]:
         """Handle tool calls"""
@@ -143,6 +174,8 @@ class DynamicOrchestratorServer:
                 result = await self._handle_analyze(arguments)
             elif name == "get_metrics":
                 result = await self._handle_get_metrics(arguments)
+            elif name == "test_llm":
+                result = await self._handle_test_llm(arguments)
             else:
                 result = {"error": f"Unknown tool: {name}"}
             
@@ -160,24 +193,30 @@ class DynamicOrchestratorServer:
     
     async def _handle_orchestrate(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Handle orchestrate tool call with input validation"""
+        logger.info(f"_handle_orchestrate called with arguments: {arguments}")
+        
         # Validate input
         try:
             validated = OrchestrateRequest(**arguments)
             request_data = validated.model_dump()
+            logger.info(f"Input validated successfully: {request_data}")
         except Exception as e:
             logger.error(f"Input validation failed: {e}")
             return {"error": f"Invalid input: {str(e)}"}
         
         # Start metrics tracking
         request_id = self.metrics.start_request() if self.metrics else None
+        logger.info(f"Started metrics tracking with request_id: {request_id}")
         
         try:
             # Execute orchestration with validated data
+            logger.info("About to call orchestrator.orchestrate")
             result = await self.orchestrator.orchestrate(
                 request=request_data['request'],
                 context=request_data['context'],
                 options=request_data['options']
             )
+            logger.info(f"Orchestration result: success={result.get('success')}, model={result.get('selected_model')}")
             
             # Track metrics
             if self.metrics and request_id:
@@ -186,6 +225,7 @@ class DynamicOrchestratorServer:
             return result
             
         except Exception as e:
+            logger.error(f"Orchestration exception: {e}")
             if self.metrics and request_id:
                 await self.metrics.record_error(request_id, str(e))
             raise
@@ -237,6 +277,49 @@ class DynamicOrchestratorServer:
                 "tokens_saved": metrics.get("tokens_saved", 0)
             }
         }
+    
+    async def _handle_test_llm(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle direct LLM test for debugging"""
+        prompt = arguments.get("prompt", "Hello")
+        model = arguments.get("model", "gemini-2.0-flash")
+        
+        if not self.orchestrator:
+            return {"error": "Orchestrator not initialized"}
+        
+        try:
+            # Test LLM client directly
+            llm_client = self.orchestrator.fallback_handler.llm_client
+            
+            # Check initialization status
+            if not llm_client.initialized:
+                await llm_client.initialize()
+            
+            # Test completion
+            response = await llm_client.complete(
+                prompt=prompt,
+                model=model,
+                temperature=0.7,
+                max_tokens=100
+            )
+            
+            return {
+                "success": True,
+                "prompt": prompt,
+                "model": model,
+                "response": response,
+                "llm_initialized": llm_client.initialized,
+                "available_clients": list(llm_client.clients.keys())
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "prompt": prompt,
+                "model": model,
+                "llm_initialized": getattr(self.orchestrator.fallback_handler.llm_client, 'initialized', False),
+                "available_clients": list(getattr(self.orchestrator.fallback_handler.llm_client, 'clients', {}).keys())
+            }
     
     async def run(self):
         """Run the MCP server"""

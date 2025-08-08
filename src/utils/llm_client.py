@@ -30,6 +30,7 @@ class LLMClient:
     
     async def initialize(self, mcp_session=None):
         """Initialize LLM clients based on available API keys"""
+        logger.info(f"LLMClient initialize called, initialized={self.initialized}")
         if self.initialized:
             return
         
@@ -37,17 +38,22 @@ class LLMClient:
         if mcp_session:
             self.mcp_session = mcp_session
         
+        logger.info(f"Initializing LLM clients, use_claude_code={self.config.get('use_claude_code', True)}, mcp_session={self.mcp_session is not None}")
+        
         # Initialize Claude Code client first (priority)
         if self.config.get("use_claude_code", True):
             try:
+                logger.info("Creating ClaudeCodeLLMClient")
                 self.claude_code_client = ClaudeCodeLLMClient(self.mcp_session)
                 await self.claude_code_client.initialize()
                 
                 if self.claude_code_client.is_available():
                     self.clients[LLMProvider.CLAUDE_CODE] = self.claude_code_client
                     logger.info("Claude Code LLM client initialized (priority provider)")
+                else:
+                    logger.warning("Claude Code LLM client not available after initialization")
             except Exception as e:
-                logger.warning(f"Failed to initialize Claude Code client: {e}")
+                logger.error(f"Failed to initialize Claude Code client: {e}", exc_info=True)
         
         # Load environment variables securely
         env_loader = EnvLoader()
@@ -116,6 +122,16 @@ class LLMClient:
         Returns:
             Generated text
         """
+        logger.info(f"LLMClient.complete called with model={model}, initialized={self.initialized}")
+        logger.debug(f"Available clients: {list(self.clients.keys())}")
+        logger.debug(f"Claude Code client available: {self.claude_code_client and self.claude_code_client.is_available()}")
+        
+        # Check if we have any clients at all
+        if not self.initialized or not self.clients:
+            error_msg = f"LLMClient not properly initialized. initialized={self.initialized}, clients={list(self.clients.keys())}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+        
         # First, try Claude Code if available and model is supported
         if (self.claude_code_client and 
             self.claude_code_client.is_available() and
@@ -130,20 +146,31 @@ class LLMClient:
                     **kwargs
                 )
             except Exception as e:
-                logger.warning(f"Claude Code completion failed, falling back: {e}")
+                logger.error(f"Claude Code completion failed, falling back: {e}", exc_info=True)
         
         # Fall back to external APIs
         provider = self._get_provider_from_model(model)
         
-        if provider == LLMProvider.OPENAI:
-            return await self._complete_openai(prompt, model, temperature, max_tokens, **kwargs)
-        elif provider == LLMProvider.GOOGLE:
-            return await self._complete_google(prompt, model, temperature, max_tokens, **kwargs)
-        elif provider == LLMProvider.ANTHROPIC:
-            return await self._complete_anthropic(prompt, model, temperature, max_tokens, **kwargs)
-        else:
-            # Fallback to any available provider
+        if not provider:
+            logger.warning(f"Could not determine provider for model '{model}'. Using fallback.")
             return await self._complete_fallback(prompt, temperature, max_tokens, **kwargs)
+        
+        logger.info(f"Using provider: {provider} for model: {model}")
+        
+        try:
+            if provider == LLMProvider.OPENAI:
+                return await self._complete_openai(prompt, model, temperature, max_tokens, **kwargs)
+            elif provider == LLMProvider.GOOGLE:
+                return await self._complete_google(prompt, model, temperature, max_tokens, **kwargs)
+            elif provider == LLMProvider.ANTHROPIC:
+                return await self._complete_anthropic(prompt, model, temperature, max_tokens, **kwargs)
+            else:
+                error_msg = f"Unknown provider {provider} for model {model}"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+        except Exception as provider_error:
+            logger.error(f"Provider {provider} failed for model {model}: {provider_error}")
+            raise
     
     def _get_provider_from_model(self, model: str) -> Optional[LLMProvider]:
         """Determine provider from model name"""

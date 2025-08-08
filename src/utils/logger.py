@@ -18,6 +18,8 @@ def setup_logger(name: Optional[str] = None) -> logging.Logger:
     Returns:
         Configured logger
     """
+    import os
+    
     # Configure structlog
     structlog.configure(
         processors=[
@@ -36,11 +38,28 @@ def setup_logger(name: Optional[str] = None) -> logging.Logger:
         cache_logger_on_first_use=True,
     )
     
+    # Get log level from environment, default to INFO
+    log_level = getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO)
+    
+    # Configure handlers based on environment
+    handlers = [logging.StreamHandler(sys.stderr)]
+    
+    # Only add file handler in debug mode and if path is specified
+    debug_log_path = os.environ.get("DEBUG_LOG_PATH")
+    if debug_log_path and log_level == logging.DEBUG:
+        try:
+            log_file = Path(debug_log_path)
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            handlers.append(logging.FileHandler(log_file, mode='a', encoding='utf-8'))
+        except Exception as e:
+            # If file handler fails, just use stderr
+            sys.stderr.write(f"Warning: Could not create log file handler: {e}\n")
+    
     # Configure standard logging
     logging.basicConfig(
-        format="%(message)s",
-        stream=sys.stderr,
-        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        level=log_level,
+        handlers=handlers
     )
     
     # Create logger
