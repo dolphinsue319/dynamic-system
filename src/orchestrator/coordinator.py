@@ -13,6 +13,7 @@ from ..mcp_manager.service_selector import MCPServiceSelector
 from ..model_manager.model_selector import ModelSelector
 from ..model_manager.fallback_handler import FallbackHandler
 from ..monitoring.metrics_collector import MetricsCollector
+from ..document_processor.document_preprocessor import DocumentPreprocessor, ProcessingStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,9 @@ class Orchestrator:
         # Use provided metrics or create new one
         self.metrics = metrics if metrics else MetricsCollector(config.get("monitoring", {}))
         
+        # Initialize document preprocessor for large documents
+        self.document_preprocessor = DocumentPreprocessor(config, mcp_session=mcp_session)
+        
         self.initialized = False
     
     async def initialize(self):
@@ -70,7 +74,8 @@ class Orchestrator:
                 self.service_selector.initialize(),
                 self.model_selector.initialize(),
                 self.fallback_handler.initialize(),
-                self.metrics.initialize()
+                self.metrics.initialize(),
+                self.document_preprocessor.initialize()
             )
             
             self.initialized = True
@@ -174,6 +179,56 @@ class Orchestrator:
                 "result": selected_model,
                 "duration_ms": (time.time() - start_time) * 1000
             })
+            
+            # Step 5.5: Check if document preprocessing is needed
+            document_content = context.get("document") if context else None
+            preprocessed_summary = None
+            
+            if document_content:
+                should_preprocess, token_count = await self.document_preprocessor.should_preprocess(
+                    document_content,
+                    selected_model
+                )
+                
+                if should_preprocess:
+                    logger.info(f"Document exceeds token limit ({token_count:,} tokens). Preprocessing with Gemini...")
+                    
+                    # Determine processing strategy based on intent
+                    strategy = ProcessingStrategy.HYBRID
+                    if intent == "analyze":
+                        strategy = ProcessingStrategy.SEMANTIC
+                    elif intent == "search":
+                        strategy = ProcessingStrategy.EXTRACTIVE
+                    
+                    # Preprocess the document
+                    preprocessed_summary = await self.document_preprocessor.preprocess(
+                        content=document_content,
+                        request_context=request,
+                        strategy=strategy
+                    )
+                    
+                    # Update the prompt to use the summary
+                    generated_prompt = f"""Based on this preprocessed document summary, {request}
+                    
+Summary Overview:
+- Original document: {preprocessed_summary.original_tokens:,} tokens
+- Processing strategy: {preprocessed_summary.strategy_used.value}
+- Key sections: {len(preprocessed_summary.sections)}
+
+Key Points:
+{chr(10).join(f'- {point}' for point in preprocessed_summary.key_points)}
+
+Detailed Summary:
+{preprocessed_summary.full_summary}"""
+                    
+                    orchestration_steps.append({
+                        "step": "document_preprocessing",
+                        "result": f"Reduced {preprocessed_summary.original_tokens:,} → {preprocessed_summary.summary_tokens:,} tokens",
+                        "cached": preprocessed_summary.cached,
+                        "duration_ms": (time.time() - start_time) * 1000
+                    })
+                    
+                    logger.info(f"Document preprocessed: {preprocessed_summary.original_tokens:,} → {preprocessed_summary.summary_tokens:,} tokens")
             
             # Step 6: Execute with fallback handling
             logger.info(f"Executing with model: {selected_model}")

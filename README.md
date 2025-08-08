@@ -18,6 +18,7 @@ The Dynamic Orchestrator acts as an intelligent middleware that:
 - **Classifies intent** of incoming requests (READ, WRITE, SEARCH, ANALYZE, MANAGE)
 - **Analyzes complexity** to determine resource requirements
 - **Selects optimal models** based on task complexity and constraints
+- **Preprocesses large documents** using Gemini's 1M token context window
 - **Generates optimized prompts** dynamically using LLMs
 - **Routes to appropriate services** intelligently
 - **Provides automatic fallback** with circuit breaker pattern
@@ -27,6 +28,7 @@ The Dynamic Orchestrator acts as an intelligent middleware that:
 
 Based on real-world testing and production usage:
 - **Token Reduction**: 67% average reduction (32,700 → 10,800 tokens)
+- **Document Processing**: Handle up to 1M tokens with Gemini preprocessing
 - **Cost Savings**: 99.2% reduction ($0.2445 → $0.0018 per request batch)
 - **Performance**: 3-5x faster response times with optimized models
 - **Reliability**: 99.5% success rate with fallback mechanisms
@@ -36,6 +38,12 @@ Testing with 5 diverse requests shows dramatic savings:
 - **WITHOUT Orchestrator**: 32,700 tokens, $0.2445 (always using Claude-3.5)
 - **WITH Orchestrator**: 10,800 tokens, $0.0018 (intelligent model selection)
 - **Savings**: 21,900 tokens (67%), $0.2427 (99.2%)
+
+### Document Preprocessing Capability
+- **Gemini's 1M Context**: Process documents up to 1 million tokens
+- **Enable Other LLMs**: Allow 200K-limited models to work with large docs
+- **Smart Caching**: Reuse preprocessed summaries for repeated queries
+- **Multiple Strategies**: Hierarchical, semantic, extractive, or hybrid processing
 
 ## 🏗️ Architecture
 
@@ -65,6 +73,13 @@ Testing with 5 diverse requests shows dramatic savings:
 │  │        Claude Code Client (Zero Cost Path)          │   │
 │  │              OR External API Clients                │   │
 │  └─────────────────────────────────────────────────────┘   │
+│                           │                                 │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │         Document Preprocessor (1M tokens)           │  │
+│  │          ├─ Gemini-based preprocessing              │  │
+│  │          ├─ Smart chunking strategies               │  │
+│  │          └─ Summary caching                         │  │
+│  └──────────────────────────────────────────────────────┘  │
 │                           │                                 │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │              Execution & MCP Services                │  │
@@ -364,15 +379,20 @@ metrics = await session.call_tool("get_metrics", {"period": "1d"})   # Last day
 
 ### Token Savings Demonstration
 
-Run the included demo to see actual token savings:
+Run the included demos to see actual savings:
 
 ```bash
+# Token savings demo
 python test_token_savings.py
+
+# Document preprocessing demo (NEW!)
+python test_document_preprocessing.py
 ```
 
-This will show a detailed comparison between:
-- **WITH Orchestrator**: Intelligent model selection based on complexity
-- **WITHOUT Orchestrator**: Always using expensive models (Claude-3.5)
+These demos show:
+- **Token Savings**: Intelligent model selection based on complexity
+- **Document Processing**: How Gemini enables processing of 1M token documents
+- **Cost Reduction**: 99%+ savings through optimization
 
 ## 📁 Project Structure
 
@@ -380,6 +400,10 @@ This will show a detailed comparison between:
 dynamic-orchestrator-mcp/
 ├── src/
 │   ├── orchestrator/        # Core orchestration logic
+│   ├── document_processor/  # Document preprocessing (NEW!)
+│   │   ├── document_preprocessor.py  # Gemini-based preprocessing
+│   │   ├── chunking_strategy.py      # Intelligent chunking
+│   │   └── summary_cache.py          # Summary caching
 │   ├── model_manager/       # Model selection and fallback
 │   ├── prompt_generator/    # Dynamic prompt generation
 │   ├── mcp_manager/        # MCP service management
@@ -392,7 +416,8 @@ dynamic-orchestrator-mcp/
 ├── tests/                # Test suite
 ├── examples/             # Usage examples
 ├── docs/                # Documentation
-└── demo_claude_code.py  # Cost savings demonstration
+├── demo_claude_code.py   # Cost savings demonstration
+└── test_document_preprocessing.py  # Document processing demo (NEW!)
 ```
 
 ## 💰 Cost Comparison

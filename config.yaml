@@ -61,6 +61,24 @@ execution:
       - claude-3-5-sonnet-20241022
       - claude-3-opus-20240229
 
+# Document Processing Configuration
+document_processing:
+  enable_preprocessing: true
+  max_direct_tokens: 100000  # Tokens threshold for preprocessing
+  preprocessor_model: "gemini-2.0-flash"  # Model with 1M context window
+  cache_dir: "/tmp/document_cache"
+  cache_ttl_seconds: 86400  # 24 hours
+  summary_strategies:
+    - hierarchical  # Multi-level summarization
+    - semantic      # Semantic chunking
+    - extractive    # Key content extraction
+    - hybrid        # Combined approach
+  chunking:
+    default_chunk_size: 10000
+    max_chunk_size: 50000
+    min_chunk_size: 500
+    overlap_size: 200
+
 # MCP Services Registry
 mcp_services:
   file_manager:
