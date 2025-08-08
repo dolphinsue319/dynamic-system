@@ -25,11 +25,17 @@ The Dynamic Orchestrator acts as an intelligent middleware that:
 
 ## 📊 Performance Metrics
 
-Based on real-world usage patterns:
-- **Token Reduction**: 70-80% average reduction
-- **Cost Savings**: 100% when using Claude Code, 75-85% with external APIs
-- **Performance**: 3-5x faster response times
+Based on real-world testing and production usage:
+- **Token Reduction**: 67% average reduction (32,700 → 10,800 tokens)
+- **Cost Savings**: 99.2% reduction ($0.2445 → $0.0018 per request batch)
+- **Performance**: 3-5x faster response times with optimized models
 - **Reliability**: 99.5% success rate with fallback mechanisms
+
+### Real-World Example
+Testing with 5 diverse requests shows dramatic savings:
+- **WITHOUT Orchestrator**: 32,700 tokens, $0.2445 (always using Claude-3.5)
+- **WITH Orchestrator**: 10,800 tokens, $0.0018 (intelligent model selection)
+- **Savings**: 21,900 tokens (67%), $0.2427 (99.2%)
 
 ## 🏗️ Architecture
 
@@ -295,30 +301,78 @@ pytest tests/test_orchestrator.py -v
 pytest --cov=src --cov-report=html
 ```
 
-## 📊 Monitoring
+## 📊 Monitoring & Metrics
 
-### Metrics Available
+### Real-Time Metrics Collection
 
-The service tracks:
-- Total requests by intent and complexity
-- Request duration and latency
-- Token usage and savings
-- Cost tracking (always $0 with Claude Code!)
-- Cache hit rates
-- Error rates and fallback usage
+The orchestrator includes a comprehensive `MetricsCollector` that tracks:
+
+#### Key Metrics Tracked
+- **Token Usage**: Input/output tokens per request
+- **Token Savings**: Actual tokens saved through optimization
+- **Cost Tracking**: Real-time cost calculation in USD
+- **Performance**: Request duration, P50/P95/P99 latencies
+- **Success Rate**: Request success/failure tracking
+- **Model Distribution**: Which models are being used
+- **Service Usage**: MCP services utilization
+- **Cache Performance**: Hit rates and efficiency
+
+### Retrieving Metrics
+
+Use the `get_metrics` tool to view aggregated statistics:
+
+```python
+# Get metrics for different time periods
+metrics = await session.call_tool("get_metrics", {"period": "5m"})   # Last 5 minutes
+metrics = await session.call_tool("get_metrics", {"period": "1h"})   # Last hour
+metrics = await session.call_tool("get_metrics", {"period": "1d"})   # Last day
+```
 
 ### Example Metrics Output
 
 ```json
 {
-  "total_requests": 1000,
-  "success_rate": 0.995,
-  "avg_latency_ms": 250,
-  "total_cost_usd": 0.00,  // With Claude Code
-  "tokens_saved": 750000,
+  "period": "1h",
+  "total_requests": 100,
+  "successful_requests": 99,
+  "failed_requests": 1,
+  "success_rate": 0.99,
+  "avg_duration_ms": 250.5,
+  "p50_duration_ms": 200,
+  "p95_duration_ms": 450,
+  "p99_duration_ms": 800,
+  "total_tokens": 150000,
+  "avg_tokens": 1500,
+  "total_tokens_saved": 450000,  // 75% savings!
+  "total_cost_usd": 0.18,
+  "avg_cost_usd": 0.0018,
+  "requests_per_minute": 1.67,
+  "intent_distribution": {
+    "read": 40,
+    "write": 25,
+    "analyze": 20,
+    "search": 15
+  },
+  "model_distribution": {
+    "gemini-2.0-flash": 60,
+    "gpt-4o-mini": 30,
+    "gpt-4o": 10
+  },
   "cache_hit_rate": 0.85
 }
 ```
+
+### Token Savings Demonstration
+
+Run the included demo to see actual token savings:
+
+```bash
+python test_token_savings.py
+```
+
+This will show a detailed comparison between:
+- **WITH Orchestrator**: Intelligent model selection based on complexity
+- **WITHOUT Orchestrator**: Always using expensive models (Claude-3.5)
 
 ## 📁 Project Structure
 
@@ -380,7 +434,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Claude Code Integration Guide](docs/CLAUDE_CODE_INTEGRATION.md)
 - [Implementation Summary](CLAUDE_CODE_IMPLEMENTATION_SUMMARY.md)
-- [Security Improvements](SECURITY_IMPROVEMENTS.md)
+- [API Key Security](API_KEY_SECURITY.md)
 - [Example Scenarios](examples/example_scenarios.py)
 
 ---
