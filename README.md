@@ -246,6 +246,49 @@ result = await orchestrator.orchestrate(
 # Cost: $0.00 ✅
 ```
 
+### Document Preprocessing Usage
+
+Process large documents (up to 1M tokens) using Gemini and enable other LLMs to work with the summary:
+
+```python
+# Example 1: Process a large document with orchestrator
+result = await orchestrator.orchestrate(
+    request="Analyze the security vulnerabilities in this codebase",
+    context={
+        "document": large_codebase_content,  # 500K tokens
+    },
+    options={"preferred_models": ["gpt-4o-mini"]}  # 128K limit
+)
+# Automatically uses Gemini to preprocess, then GPT-4o-mini analyzes the summary
+
+# Example 2: Direct preprocessing for custom workflows
+from src.document_processor import DocumentPreprocessor, ProcessingStrategy
+
+preprocessor = DocumentPreprocessor(config)
+await preprocessor.initialize()
+
+# Check if preprocessing needed
+should_preprocess, token_count = await preprocessor.should_preprocess(
+    content=huge_document,
+    target_model="claude-3-5-sonnet"  # 200K limit
+)
+
+if should_preprocess:
+    # Preprocess with appropriate strategy
+    summary = await preprocessor.preprocess(
+        content=huge_document,
+        request_context="Find all API endpoints",
+        strategy=ProcessingStrategy.EXTRACTIVE
+    )
+    
+    # Extract specific information
+    result = await preprocessor.extract_from_summary(
+        summary=summary,
+        query="List all REST API endpoints",
+        target_model="claude-3-5-sonnet"
+    )
+```
+
 ## ⚙️ Configuration
 
 ### Claude Code Priority (config.yaml)
@@ -281,6 +324,27 @@ execution:
   complex:
     preferred: gpt-4o
     fallback: [o1-preview, claude-3-5-sonnet-20241022]
+```
+
+### Document Processing Configuration
+
+```yaml
+document_processing:
+  enable_preprocessing: true
+  max_direct_tokens: 100000  # Threshold for preprocessing
+  preprocessor_model: "gemini-2.0-flash"  # 1M context window
+  cache_dir: "/tmp/document_cache"
+  cache_ttl_seconds: 86400  # 24 hours
+  summary_strategies:
+    - hierarchical  # Multi-level summarization
+    - semantic      # Semantic chunking
+    - extractive    # Key content extraction
+    - hybrid        # Combined approach
+  chunking:
+    default_chunk_size: 10000
+    max_chunk_size: 50000
+    min_chunk_size: 500
+    overlap_size: 200
 ```
 
 ### MCP Services Registry
