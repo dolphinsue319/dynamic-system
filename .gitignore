@@ -61,3 +61,6 @@ dump.rdb
 config/local/
 data/
 temp/
+
+# Claude Code settings
+.claude/
